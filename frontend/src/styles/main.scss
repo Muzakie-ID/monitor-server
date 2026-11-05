@@ -1,118 +1,19 @@
-// Token warna mengikuti Gentelella v4 (src/scss/v4/_tokens.scss).
-// Kalau nanti memakai SCSS asli Gentelella, file ini bisa diganti dengan:
-//   @use 'gentelella/scss/v4/main';
-:root {
-  --primary: #1abb9c;
-  --primary-dk: #127c68;           // versi gelap: kontras cukup untuk teks putih
-  --primary-lt: rgba(26, 187, 156, 0.1);
-  --sidebar-bg: #1a2332;
-  --sidebar-w: 252px;
-  --bg: #f5f7fa;
-  --surface: #ffffff;
-  --border: #e6e9ed;
-  --border-lt: #eef1f4;
-  --text: #2a3f54;
-  --text-2: #3e5266;
-  --muted: #5a6b7d;
-  --blue: #3498db;
-  --orange: #e67e22;
-  --red: #e74c3c;
-  --radius: 6px;
+// Seluruh tampilan memakai design system Gentelella v4 asli (paket npm `gentelella`):
+// token warna, sidebar/topbar, card, stat, table, status, timeline, modal, toast, form, auth.
+@use 'gentelella/scss/v4/main.scss';
+
+// Hanya sedikit penyesuaian khusus aplikasi ini — semua memakai token Gentelella.
+.cell-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+  .progress-thin { flex: 1; margin: 0; }
+  span { font-size: 12px; color: var(--text-secondary); min-width: 34px; text-align: end; }
 }
 
-* { box-sizing: border-box; }
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font: 14px/1.5 Inter, 'Helvetica Neue', Arial, sans-serif;
-}
-a { color: var(--primary-dk); text-decoration: none; }
-a:hover { text-decoration: underline; }
-.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.live-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
 
-// ── Kerangka: sidebar + kolom utama ──
-.shell { display: flex; flex-wrap: wrap; min-height: 100vh; }
-.sidebar {
-  flex: 1 1 var(--sidebar-w);
-  max-width: 100%;
-  background: var(--sidebar-bg);
-  color: rgba(255, 255, 255, 0.72);
-  &__brand { height: 60px; display: flex; align-items: center; gap: 10px; padding: 0 20px; color: #fff; font-weight: 700; font-size: 17px; border-bottom: 1px solid rgba(255,255,255,.08); }
-  &__section { padding: 20px 20px 6px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.55); }
-  &__nav { display: flex; flex-direction: column; gap: 2px; padding: 0 10px; }
-  &__link {
-    display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px;
-    border-radius: var(--radius); color: inherit;
-    &:hover { background: rgba(255,255,255,.06); color: #fff; text-decoration: none; }
-    &[aria-current='page'] { background: var(--primary); color: #fff; font-weight: 500; }
-  }
-}
-.main { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; }
-.topbar {
-  min-height: 60px; background: var(--surface); border-bottom: 1px solid var(--border);
-  display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 8px 24px;
-  input { min-height: 40px; width: 280px; max-width: 100%; padding: 0 14px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); font: inherit; color: var(--text); }
-  &__right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-}
-.content { padding: 24px; display: flex; flex-direction: column; gap: 20px; }
-
-// ── Komponen ──
-.btn {
-  min-height: 40px; padding: 0 16px; border-radius: var(--radius); border: 1px solid #d5dbe1;
-  background: var(--surface); color: var(--text-2); font: inherit; cursor: pointer;
-  &--primary { background: var(--primary-dk); border-color: var(--primary-dk); color: #fff; font-weight: 600; }
-  &[aria-pressed='true'] { background: var(--text); border-color: var(--text); color: #fff; font-weight: 600; }
-}
-.segmented {
-  display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--surface);
-  button { min-height: 40px; padding: 0 14px; border: 0; background: transparent; font: inherit; font-size: 13px; color: var(--text-2); cursor: pointer; }
-  button + button { border-left: 1px solid var(--border); }
-  button[aria-pressed='true'] { background: var(--primary-dk); color: #fff; font-weight: 600; }
-}
-
-// Baris statistik (tile_count di Gentelella)
-.tiles {
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-}
-.tile {
-  margin: 10px 0; padding: 8px 20px; border-left: 2px solid var(--border);
-  &__label { font-size: 13px; color: var(--muted); }
-  &__value { font-size: 32px; font-weight: 700; line-height: 1.2; small { font-size: 16px; font-weight: 500; color: var(--muted); } }
-}
-
-// Panel (x_panel di Gentelella)
-.panel {
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 20px 20px;
-  &__title { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding-bottom: 10px; margin-bottom: 14px; border-bottom: 2px solid var(--border); }
-  h2 { margin: 0; font-size: 18px; font-weight: 500; }
-}
-.row { display: flex; flex-wrap: wrap; gap: 20px; > .panel:first-child { flex: 999 1 520px; min-width: 0; } > .panel:last-child { flex: 1 1 320px; min-width: 0; } }
-.chart { width: 100%; height: 280px; }
-
-.alert-item { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border-lt); }
-.badge {
-  display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 12px; font-weight: 600;
-  &--online { background: #ddf5ef; color: #0e6b5a; }
-  &--peringatan, &--sedang { background: #fdebd3; color: #8a4b00; }
-  &--offline, &--kritis { background: #fadbd8; color: #a93226; }
-}
-
-.table-wrap { overflow-x: auto; }
-table { width: 100%; min-width: 900px; border-collapse: collapse; }
-th { text-align: left; background: var(--bg); color: var(--text-2); font-size: 13px; font-weight: 600; padding: 12px; border-bottom: 1px solid var(--border); }
-td { padding: 12px; border-bottom: 1px solid var(--border-lt); }
-tbody tr:nth-child(even) { background: #fafbfc; }
-.mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; color: var(--muted); }
-.bar { display: flex; align-items: center; gap: 10px; }
-.bar__track { flex: 1; height: 8px; background: var(--border-lt); border-radius: 4px; overflow: hidden; }
-.bar__fill { height: 100%; }
-.empty { padding: 24px; text-align: center; color: var(--muted); }
-
-// Halaman login
-.login { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
-.login form { width: 100%; max-width: 360px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; display: flex; flex-direction: column; gap: 14px; }
-.login label { display: flex; flex-direction: column; gap: 6px; font-weight: 500; }
-.login input { min-height: 44px; padding: 0 12px; border: 1px solid #d5dbe1; border-radius: var(--radius); font: inherit; }
-.login .error { color: #a93226; min-height: 1.5em; margin: 0; }
+// Komponen Gentelella memakai display:flex/grid, jadi atribut [hidden] perlu dipaksa.
+[hidden] { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

@@ -33,6 +33,7 @@ async function request(path, options = {}) {
 
 export const api = {
   login: (email, password) => request('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  me: () => request('/api/auth/me'),
   summary: () => request('/api/summary'),
   servers: () => request('/api/servers'),
   regions: () => request('/api/regions'),

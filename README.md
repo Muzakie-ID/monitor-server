@@ -1,7 +1,7 @@
 # Pantau Server
 
 Dashboard monitoring server: Prometheus untuk metrik, Alertmanager untuk peringatan,
-backend Node.js (Fastify) + PostgreSQL, frontend bergaya Gentelella dengan ECharts.
+backend Node.js (Fastify) + PostgreSQL, frontend memakai komponen asli Gentelella v4 (paket npm `gentelella`) dengan ECharts.
 
 ## Alur data
 
@@ -48,7 +48,7 @@ pantau-server/
 │           ├── metrics.js      data grafik
 │           ├── alerts.js       daftar peringatan + webhook Alertmanager
 │           └── stream.js       SSE
-├── frontend/                   Vite + ECharts, disajikan Nginx
+├── frontend/                   Vite + Gentelella v4 + ECharts, disajikan Nginx
 │   ├── index.html              dashboard
 │   ├── login.html
 │   ├── nginx.conf              sajikan file + teruskan /api ke backend
@@ -56,7 +56,7 @@ pantau-server/
 │       ├── api.js              semua panggilan ke backend
 │       ├── main.js             isi tile, grafik, peringatan, tabel
 │       ├── format.js           format byte, bit/s, durasi
-│       └── styles/main.scss    token warna Gentelella
+│       └── styles/main.scss    impor SCSS Gentelella v4 + sedikit penyesuaian
 └── ansible/
     └── install-node-exporter.yml   pasang node_exporter ke banyak server
 ```

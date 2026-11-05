@@ -1,21 +1,58 @@
 <!doctype html>
-<html lang="id">
+<html lang="id" data-sw="off">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Masuk · Pantau Server</title>
-  <link rel="stylesheet" href="/src/styles/main.scss">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script>(function(){try{var t=localStorage.getItem('theme');var d=window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.setAttribute('data-theme',t||(d?'dark':'light'));}catch(e){}})();</script>
+  <script type="module" src="/src/login.js"></script>
 </head>
 <body>
-  <main class="login">
-    <form id="login-form">
-      <h1 style="margin:0;font-size:22px">Pantau Server</h1>
-      <label>Email <input name="email" type="email" autocomplete="username" required></label>
-      <label>Kata sandi <input name="password" type="password" autocomplete="current-password" required></label>
-      <p class="error" id="login-error" role="alert"></p>
-      <button class="btn btn--primary" type="submit">Masuk</button>
+
+<!-- Halaman masuk memakai komponen .auth-page / .auth-card Gentelella -->
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="brand-icon">P</div>
+      <div class="brand-name">Pantau Server</div>
+    </div>
+
+    <div class="auth-title">Selamat datang kembali</div>
+    <div class="auth-subtitle">Masuk untuk membuka dashboard monitoring.</div>
+
+    <div class="alert alert-error" id="login-error" role="alert" hidden>
+      <svg class="alert-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3.5M8 11h.01"/></svg>
+      <div class="alert-body" id="login-error-text"></div>
+    </div>
+
+    <form id="login-form" action="/api/auth/login" method="post" novalidate>
+      <div class="form-group">
+        <label class="form-label" for="email">Email</label>
+        <div class="input-group">
+          <svg class="input-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M2 5l6 4 6-4"/></svg>
+          <input type="email" id="email" name="email" class="form-control" placeholder="admin@perusahaan.id" autocomplete="username" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">Kata sandi</label>
+        <div class="input-group">
+          <svg class="input-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5 7V5a3 3 0 016 0v2"/></svg>
+          <input type="password" id="password" name="password" class="form-control" placeholder="••••••••" autocomplete="current-password" required>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-lg" id="login-submit" style="width:100%;justify-content:center">
+        Masuk
+      </button>
     </form>
-  </main>
-  <script type="module" src="/src/login.js"></script>
+
+    <div class="auth-footer">Akun dibuat oleh administrator server.</div>
+  </div>
+</div>
+
 </body>
 </html>
