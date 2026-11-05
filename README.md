@@ -79,7 +79,30 @@ pantau-server/
 
 3. Buka `http://localhost:8080`, masuk dengan `ADMIN_EMAIL` dan `ADMIN_PASSWORD` dari `.env`.
 
-4. Pasang node_exporter di server yang mau dipantau:
+4. Lanjutkan ke [Menambah server yang dipantau](#menambah-server-yang-dipantau).
+
+## Menambah server yang dipantau
+
+Tombol **Tambah Server** hanya mendaftarkan server ke Prometheus. Supaya datanya
+muncul, server tersebut juga harus menjalankan **node_exporter** dan bisa dijangkau
+dari mesin pemantau (mesin yang menjalankan docker-compose).
+
+### Yang terjadi otomatis setelah klik Simpan
+
+1. Server disimpan ke PostgreSQL.
+2. Backend menulis ulang `nodes.json` (target Prometheus) berisi `IP:port` plus
+   label `server` dan `region`.
+3. Paling lambat **30 detik** kemudian Prometheus mulai:
+   - mengambil metrik dari `http://IP:9100/metrics` (CPU, memori, disk, jaringan, uptime);
+   - mem-ping IP lewat blackbox (status Online/Offline).
+
+Tidak perlu me-restart apa pun.
+
+### Yang harus dilakukan di server yang ditambahkan
+
+1. **Pasang node_exporter.** Lewat Ansible: salin inventory, isi IP server di bawah
+   `[pantau]`, dan ubah `monitor_ip` di `install-node-exporter.yml` menjadi IP
+   mesin pemantau.
 
    ```bash
    cd ansible && cp inventory.example.ini inventory.ini
@@ -89,19 +112,42 @@ pantau-server/
    ansible-playbook -i inventory.ini install-node-exporter.yml
    ```
 
-5. Tambahkan server lewat tombol **Tambah Server** di dashboard. Backend menulis
-   `nodes.json`, dan dalam 30 detik Prometheus mulai mengambil metriknya.
+   Atau manual di Ubuntu/Debian (versi dari repo distro biasanya lebih lama):
 
-## Memakai Gentelella v4 yang asli
+   ```bash
+   sudo apt install prometheus-node-exporter
+   ```
 
-`frontend/src/styles/main.scss` meniru token warna Gentelella v4 supaya proyek ini
-bisa langsung jalan. Untuk komponen lengkapnya (sidebar, modal, DataTables, toast):
+2. **Buka firewall dari mesin pemantau:**
+   - TCP **9100**, batasi hanya dari IP mesin pemantau. Playbook sudah memasang
+     aturan ufw untuk ini.
+   - **ICMP (ping)**. Kalau ping diblokir, server tampil **Offline** walaupun
+     metriknya masuk.
+   - Firewall penyedia cloud (Security Group dan sejenisnya) tetap harus diatur sendiri.
 
-1. Clone `https://github.com/colorlibhq/gentelella`.
-2. Salin `src/scss/v4/` dan `src/v4/` ke `frontend/src/gentelella/`.
-3. Di `main.scss`, ganti isinya dengan `@use './gentelella/scss/v4/main';`.
-4. Ganti `prompt()` di tombol Tambah Server dengan `src/v4/modal.js`, dan tabel
-   dengan DataTables (`src/v4/tables.js`).
+3. **Cek dari mesin pemantau.** Kalau keluar teks metrik, berarti sudah benar:
+
+   ```bash
+   curl -s http://IP_SERVER:9100/metrics | head
+   ```
+
+### Membaca hasilnya di dashboard
+
+Tunggu sekitar 30–60 detik, lalu lihat tabel Daftar Server:
+
+| Yang terlihat | Artinya |
+|---|---|
+| **Online**, CPU/memori terisi | Semua berjalan |
+| **Online**, CPU/memori "—" | Ping berhasil, tapi port 9100 tidak terjangkau: cek node_exporter dan firewall |
+| **Offline** | Ping gagal: cek IP, atau ICMP diblokir |
+| **Peringatan** | Server berjalan, tapi ada alert aktif (misalnya CPU di atas 85%) |
+
+Kalau masih bermasalah, lihat status target di Prometheus. Kolom `lastError`
+menjelaskan penyebabnya, misalnya *connection refused* atau *timeout*:
+
+```bash
+docker compose exec prometheus wget -qO- localhost:9090/api/v1/targets | head -c 2000
+```
 
 ## Catatan keamanan
 
