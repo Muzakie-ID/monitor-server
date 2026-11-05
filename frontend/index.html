@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard · Pantau Server</title>
+  <link rel="stylesheet" href="/src/styles/main.scss">
+</head>
+<body>
+<div class="shell">
+  <nav class="sidebar" aria-label="Navigasi utama">
+    <div class="sidebar__brand">Pantau Server</div>
+    <div class="sidebar__section">Umum</div>
+    <div class="sidebar__nav">
+      <a class="sidebar__link" href="/" aria-current="page">Dashboard</a>
+      <a class="sidebar__link" href="#servers">Server</a>
+      <a class="sidebar__link" href="#alerts">Peringatan</a>
+    </div>
+    <div class="sidebar__section">Akun</div>
+    <div class="sidebar__nav">
+      <button class="sidebar__link" id="logout" type="button" style="background:none;border:0;font:inherit;cursor:pointer;text-align:left">Keluar</button>
+    </div>
+  </nav>
+
+  <div class="main">
+    <header class="topbar">
+      <label class="sr-only" for="search">Cari server</label>
+      <input id="search" type="search" placeholder="Cari server, IP, atau tag…">
+      <div class="topbar__right"><span id="updated" class="mono">Memuat…</span></div>
+    </header>
+
+    <main class="content">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px">
+        <h1 style="margin:0;font-size:24px;font-weight:600">Monitoring Server</h1>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <div class="segmented" role="group" aria-label="Rentang waktu" id="ranges">
+            <button type="button" data-range="1h" aria-pressed="false">1 Jam</button>
+            <button type="button" data-range="24h" aria-pressed="true">24 Jam</button>
+            <button type="button" data-range="7d" aria-pressed="false">7 Hari</button>
+            <button type="button" data-range="30d" aria-pressed="false">30 Hari</button>
+          </div>
+          <button class="btn btn--primary" type="button" id="add-server">+ Tambah Server</button>
+        </div>
+      </div>
+
+      <section class="tiles" aria-label="Metrik utama" id="tiles"></section>
+
+      <div class="row">
+        <section class="panel">
+          <div class="panel__title"><h2>Beban Sumber Daya</h2></div>
+          <div class="chart" id="chart" role="img" aria-label="Grafik CPU dan memori"></div>
+        </section>
+        <section class="panel" id="alerts">
+          <div class="panel__title"><h2>Peringatan Aktif</h2><span id="alert-counts" class="mono"></span></div>
+          <div id="alert-list"></div>
+        </section>
+      </div>
+
+      <section class="panel" id="servers">
+        <div class="panel__title">
+          <h2>Daftar Server</h2>
+          <div style="display:flex;gap:6px;flex-wrap:wrap" id="filters">
+            <button class="btn" type="button" data-filter="all" aria-pressed="true">Semua</button>
+            <button class="btn" type="button" data-filter="online" aria-pressed="false">Online</button>
+            <button class="btn" type="button" data-filter="peringatan" aria-pressed="false">Peringatan</button>
+            <button class="btn" type="button" data-filter="offline" aria-pressed="false">Offline</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Server</th><th>Status</th><th>Region</th><th>CPU</th><th>Memori</th><th>Disk</th><th>Jaringan</th><th>Uptime</th></tr>
+            </thead>
+            <tbody id="server-rows"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

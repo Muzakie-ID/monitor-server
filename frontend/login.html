@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Masuk · Pantau Server</title>
+  <link rel="stylesheet" href="/src/styles/main.scss">
+</head>
+<body>
+  <main class="login">
+    <form id="login-form">
+      <h1 style="margin:0;font-size:22px">Pantau Server</h1>
+      <label>Email <input name="email" type="email" autocomplete="username" required></label>
+      <label>Kata sandi <input name="password" type="password" autocomplete="current-password" required></label>
+      <p class="error" id="login-error" role="alert"></p>
+      <button class="btn btn--primary" type="submit">Masuk</button>
+    </form>
+  </main>
+  <script type="module" src="/src/login.js"></script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+route:
+  receiver: backend
+  group_by: [alertname, server]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+
+receivers:
+  # Semua peringatan dikirim ke backend, yang menyimpannya di PostgreSQL
+  # dan meneruskannya ke dashboard lewat SSE.
+  - name: backend
+    webhook_configs:
+      - url: http://backend:3000/api/alerts/webhook
+        send_resolved: true
+        http_config:
+          authorization:
+            type: Bearer
+            # Samakan dengan ALERT_WEBHOOK_TOKEN di .env
+            credentials: ganti-token-webhook
+
+    # Contoh tambahan: kirim juga ke Telegram (hapus tanda # untuk mengaktifkan)
+    # telegram_configs:
+    #   - bot_token: "<TOKEN_BOT>"
+    #     chat_id: <ID_CHAT>

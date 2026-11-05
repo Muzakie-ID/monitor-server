@@ -1,0 +1,71 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      retries: 5
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=30d
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - targets:/etc/prometheus/targets
+      - promdata:/prometheus
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.0
+    restart: unless-stopped
+    volumes:
+      - ./alertmanager:/etc/alertmanager:ro
+
+  blackbox:
+    image: prom/blackbox-exporter:v0.25.0
+    restart: unless-stopped
+    volumes:
+      - ./blackbox:/etc/blackbox_exporter:ro
+    command: --config.file=/etc/blackbox_exporter/blackbox.yml
+    cap_add:
+      - NET_RAW   # dibutuhkan untuk probe ICMP (ping)
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      PROMETHEUS_URL: http://prometheus:9090
+      TARGETS_FILE: /targets/nodes.json
+    volumes:
+      - targets:/targets
+    depends_on:
+      postgres:
+        condition: service_healthy
+      prometheus:
+        condition: service_started
+
+  nginx:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+  promdata:
+  targets:

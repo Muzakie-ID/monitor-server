@@ -1,0 +1,42 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/alert.rules.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  # Metrik CPU, memori, disk, jaringan dari node_exporter di tiap server.
+  # Daftar target ditulis otomatis oleh backend saat server ditambah/dihapus.
+  - job_name: node
+    file_sd_configs:
+      - files: ["/etc/prometheus/targets/nodes.json"]
+        refresh_interval: 30s
+
+  # Cek apakah server bisa di-ping (status Online/Offline + waktu respons).
+  # Memakai daftar target yang sama, tapi port-nya dibuang.
+  - job_name: blackbox_icmp
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    file_sd_configs:
+      - files: ["/etc/prometheus/targets/nodes.json"]
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: "([^:]+)(:\\d+)?"
+        target_label: __param_target
+        replacement: "$1"
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
