@@ -43,11 +43,25 @@ export const api = {
     request(`/api/metrics/range?range=${range}${server ? `&server=${encodeURIComponent(server)}` : ''}`),
   alerts: () => request('/api/alerts'),
 
+  // Pemasangan otomatis lewat SSH
+  provisionInfo: () => request('/api/provision/info'),
+  testConnection: (body) => request('/api/provision/test', { method: 'POST', body: JSON.stringify(body) }),
+  reprovision: (id, body) => request(`/api/servers/${id}/provision`, { method: 'POST', body: JSON.stringify(body) }),
+  recheck: (id) => request(`/api/servers/${id}/recheck`, { method: 'POST', body: '{}' }),
+  uninstall: (id, body) => request(`/api/servers/${id}/uninstall`, { method: 'POST', body: JSON.stringify(body) }),
+  serverJobs: (id) => request(`/api/servers/${id}/jobs`),
+  job: (id) => request(`/api/jobs/${id}`),
+  answerHostkey: (id, accept) => request(`/api/jobs/${id}/hostkey`, { method: 'POST', body: JSON.stringify({ accept }) }),
+  answerPlan: (id, approve) => request(`/api/jobs/${id}/approve`, { method: 'POST', body: JSON.stringify({ approve }) }),
+  cancelJob: (id) => request(`/api/jobs/${id}/cancel`, { method: 'POST', body: '{}' }),
+  audit: (limit = 200) => request(`/api/audit?limit=${limit}`),
+
   // Update live: onSummary dipanggil tiap 15 detik, onAlerts saat ada peringatan baru
-  stream({ onSummary, onAlerts }) {
+  stream({ onSummary, onAlerts, onProvision }) {
     const es = new EventSource(`/api/stream?token=${encodeURIComponent(auth.token ?? '')}`);
     es.addEventListener('summary', (e) => onSummary?.(JSON.parse(e.data)));
     es.addEventListener('alerts', () => onAlerts?.());
+    es.addEventListener('provision', (e) => onProvision?.(JSON.parse(e.data)));
     return () => es.close();
   }
 };

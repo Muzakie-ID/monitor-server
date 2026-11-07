@@ -9,6 +9,10 @@ import { showModal } from 'gentelella/v4/modal';
 import { showToast } from 'gentelella/v4/toast';
 import { openMenu, openPanel } from 'gentelella/v4/menus';
 import { api, auth } from './api.js';
+import { el, icon, ICONS, emptyState } from './dom.js';
+import {
+  openAddServerWizard, openJobModal, openReprovision, openRemove, openJobHistory, openAuditLog, notifyJobChanged
+} from './provision-ui.js';
 import { bytes, bits, duration, ago } from './format.js';
 
 if (!auth.token) location.replace('/login.html');
@@ -16,42 +20,21 @@ if (!auth.token) location.replace('/login.html');
 const $ = (sel) => document.querySelector(sel);
 const state = { range: '24h', filter: 'all', search: '', servers: [], alerts: [], counts: null };
 
-// Membuat elemen dengan aman: teks selalu lewat textContent, tidak pernah innerHTML
-function el(tag, props = {}, ...children) {
-  const node = Object.assign(document.createElement(tag), props);
-  for (const c of children) node.append(c ?? '');
-  return node;
-}
-
-// SVG ikon statis (bukan data pengguna) — aman di-parse dari string
-function icon(markup) {
-  const tpl = document.createElement('template');
-  tpl.innerHTML = markup.trim();
-  return tpl.content.firstElementChild;
-}
-const ICONS = {
-  server: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><path d="M7 7.5h.01M7 16.5h.01"/></svg>',
-  cpu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></svg>',
-  mem: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="10" rx="1.5"/><path d="M6 11v2M10 11v2M14 11v2M18 11v2"/></svg>',
-  uptime: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
-  trash: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.5h6.6L12 4"/></svg>',
-  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>',
-  search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>'
-};
-
 // Warna diambil dari token CSS Gentelella, jadi ikut berubah saat mode gelap
 const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 const STATUS_CLASS = { online: 'status-green', peringatan: 'status-yellow', offline: 'status-red' };
 const STATUS_LABEL = { online: 'Online', peringatan: 'Peringatan', offline: 'Offline' };
-const levelVar = (v, base) => (v >= 85 ? 'var(--red)' : v >= 70 ? 'var(--yellow)' : base);
 
-// ── Komponen Gentelella: empty state ──
-function emptyState(title, desc, svg = ICONS.check) {
-  return el('div', { className: 'empty-state' },
-    el('div', { className: 'empty-state-icon' }, icon(svg)),
-    el('div', { className: 'empty-state-title', textContent: title }),
-    el('div', { className: 'empty-state-desc', textContent: desc }));
+// Status pemasangan untuk server otomatis yang belum aktif
+function provisionStatus(s) {
+  if (['awaiting_hostkey', 'awaiting_approval'].includes(s.job_status)) return ['status-yellow', 'Menunggu konfirmasi'];
+  if (s.provision_status === 'removing') return ['status-blue', 'Sedang dicopot'];
+  if (s.provision_status === 'failed') {
+    return ['status-red', s.job_failed_step === 'verify' ? 'Port tak terjangkau' : 'Gagal dipasang'];
+  }
+  return ['status-blue', 'Sedang dipasang'];
 }
+const levelVar = (v, base) => (v >= 85 ? 'var(--red)' : v >= 70 ? 'var(--yellow)' : base);
 
 // ── Kartu statistik (.card > .stat) ──
 function statCard({ label, value, unit, sub, color, svg, progress, barColor }) {
@@ -86,8 +69,8 @@ function renderStats(s) {
 
   const health = $('#health-status');
   const down = s.total - s.online;
-  health.className = `status ${down ? 'status-red' : 'status-green'}`;
-  health.textContent = down ? `${down} server offline` : 'Semua server online';
+  health.className = `status ${!s.total ? '' : down ? 'status-red' : 'status-green'}`;
+  health.textContent = !s.total ? 'Belum ada server dipantau' : down ? `${down} server offline` : 'Semua server online';
 }
 
 // ── Grafik CPU & memori (ECharts, gaya mengikuti charts.js Gentelella) ──
@@ -209,13 +192,47 @@ function cellBar(value, base) {
     el('span', { textContent: `${value}%` }));
 }
 
+function statusCell(s) {
+  if (s.status !== 'disiapkan') {
+    return el('span', { className: `status ${STATUS_CLASS[s.status] ?? ''}`, textContent: STATUS_LABEL[s.status] ?? s.status });
+  }
+  const [cls, label] = provisionStatus(s);
+  if (!s.job_id) return el('span', { className: `status ${cls}`, textContent: label });
+  // Klik status untuk membuka layar progres / alasan gagal
+  return el('button', {
+    type: 'button', className: `status ${cls}`, textContent: label, title: 'Lihat progres pemasangan',
+    style: 'background:none;border:0;padding:0;font:inherit;cursor:pointer;text-decoration:underline dotted',
+    onclick: () => openJobModal(s.job_id, { onChanged: loadServers })
+  });
+}
+
+function rowMenu(s) {
+  const opts = { onChanged: loadServers };
+  const items = [];
+  if (s.job_id) items.push({ label: 'Lihat pemasangan terakhir', action: () => openJobModal(s.job_id, opts) });
+  if (s.mode === 'auto') items.push({ label: 'Riwayat pemasangan', action: () => openJobHistory(s, opts) });
+  const busyJob = ['queued', 'running', 'awaiting_hostkey', 'awaiting_approval'].includes(s.job_status);
+  if (!busyJob) {
+    if (s.mode === 'auto' && s.provision_status === 'failed' && s.job_failed_step === 'verify') {
+      items.push({
+        label: 'Cek ulang port',
+        action: () => api.recheck(s.id).then((r) => openJobModal(r.jobId, opts)).catch((err) => showToast(err.message, { variant: 'error' }))
+      });
+    }
+    items.push({ label: s.mode === 'auto' ? 'Pasang ulang' : 'Pasang otomatis lewat SSH', action: () => openReprovision(s, opts) });
+    if (items.length) items.push('-');
+    items.push({ label: 'Hapus server', action: () => openRemove(s, opts) });
+  }
+  return items;
+}
+
 function renderServers() {
   const q = state.search.trim().toLowerCase();
   const rows = state.servers
     .filter((s) => state.filter === 'all' || s.status === state.filter)
     .filter((s) => !q || s.name.includes(q) || s.ip.includes(q) || s.tags.some((t) => t.toLowerCase().includes(q)));
 
-  const online = state.servers.filter((s) => s.status !== 'offline').length;
+  const online = state.servers.filter((s) => !['offline', 'disiapkan'].includes(s.status)).length;
   $('#server-subtitle').textContent = `${state.servers.length} server terdaftar · ${online} online`;
   const navBadge = $('#nav-server-count');
   navBadge.hidden = !state.servers.length;
@@ -225,7 +242,7 @@ function renderServers() {
     ...(rows.length
       ? rows.map((s) => el('tr', {},
           el('td', {}, el('div', { className: 'cell-strong', textContent: s.name }), el('div', { className: 'cell-mono', textContent: s.ip })),
-          el('td', {}, el('span', { className: `status ${STATUS_CLASS[s.status] ?? ''}`, textContent: STATUS_LABEL[s.status] ?? s.status })),
+          el('td', {}, statusCell(s)),
           el('td', { textContent: s.region ?? '—' }),
           el('td', {}, cellBar(s.cpu, 'var(--primary)')),
           el('td', {}, cellBar(s.mem, 'var(--azure)')),
@@ -233,7 +250,10 @@ function renderServers() {
           el('td', { className: 'cell-mono', textContent: s.netRxBps == null ? '—' : `↑${bits(s.netTxBps)} ↓${bits(s.netRxBps)}` }),
           el('td', { textContent: duration(s.uptimeSec) }),
           el('td', { style: 'text-align:end' },
-            el('button', { type: 'button', className: 'btn btn-ghost btn-icon', title: `Hapus ${s.name}`, ariaLabel: `Hapus ${s.name}`, onclick: () => confirmRemove(s) }, icon(ICONS.trash)))))
+            el('button', {
+              type: 'button', className: 'btn btn-ghost btn-icon', title: `Aksi untuk ${s.name}`, ariaLabel: `Aksi untuk ${s.name}`,
+              ariaHasPopup: 'menu', onclick: (e) => openMenu(e.currentTarget, rowMenu(s))
+            }, icon(ICONS.more)))))
       : [el('tr', {}, el('td', { colSpan: 9 },
           state.servers.length
             ? emptyState('Tidak ada yang cocok', 'Ubah kata kunci pencarian atau saringan status.', ICONS.search)
@@ -246,100 +266,14 @@ async function loadServers() {
   renderServers();
 }
 
-// ── Modal Gentelella: tambah server ──
-async function openAddServer() {
-  const regions = await api.regions().catch(() => []);
-  const field = (label, input, hint) => el('div', { className: 'form-group' },
-    el('label', { className: 'form-label', htmlFor: input.id }, label), input,
-    hint ? el('div', { className: 'form-hint', textContent: hint }) : '');
-
-  const name = el('input', { id: 'f-name', className: 'form-control', required: true, pattern: '[a-z0-9][a-z0-9\\-]{1,62}', placeholder: 'web-01' });
-  const ip = el('input', { id: 'f-ip', className: 'form-control', required: true, placeholder: '10.0.0.12', inputMode: 'decimal' });
-  const port = el('input', { id: 'f-port', className: 'form-control', type: 'number', min: 1, max: 65535, value: 9100 });
-  const region = el('select', { id: 'f-region', className: 'form-control' },
-    el('option', { value: '', textContent: '— Tanpa region —' }),
-    ...regions.map((r) => el('option', { value: String(r.id), textContent: r.name })));
-  const tags = el('input', { id: 'f-tags', className: 'form-control', placeholder: 'produksi, web' });
-  const error = el('div', { className: 'form-error', role: 'alert' });
-
-  const body = el('form', { noValidate: true },
-    field('Nama server', name, 'Huruf kecil, angka, dan tanda -'),
-    field('Alamat IP', ip),
-    el('div', { className: 'row col-2', style: 'margin-bottom:0' },
-      field('Port node_exporter', port),
-      field('Region', region)),
-    field('Tag', tags, 'Pisahkan dengan koma'),
-    error);
-
-  const ipv4 = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/;
-  let busy = false;
-
-  const submit = async ({ dialog, close }) => {
-    if (busy) return false;
-    name.classList.toggle('is-invalid', !name.checkValidity());
-    ip.classList.toggle('is-invalid', !ipv4.test(ip.value.trim()));
-    if (!name.checkValidity() || !ipv4.test(ip.value.trim())) {
-      error.textContent = 'Periksa nama server dan alamat IP.';
-      return false;
-    }
-    busy = true;
-    const btn = dialog.querySelector('.modal-footer .btn-primary');
-    btn.setAttribute('aria-busy', 'true');
-    try {
-      await api.addServer({
-        name: name.value.trim(),
-        ip: ip.value.trim(),
-        exporterPort: Number(port.value) || 9100,
-        regionId: region.value ? Number(region.value) : null,
-        tags: tags.value.split(',').map((t) => t.trim()).filter(Boolean)
-      });
-      close();
-      showToast(`Server ${name.value.trim()} ditambahkan`, { variant: 'success' });
-      loadServers();
-    } catch (err) {
-      error.textContent = err.message;
-      btn.removeAttribute('aria-busy');
-      busy = false;
-    }
-    return false;
-  };
-
-  body.addEventListener('submit', (e) => { e.preventDefault(); modal.dialog.querySelector('.modal-footer .btn-primary').click(); });
-
-  const modal = showModal({
-    title: 'Tambah Server',
-    body,
-    actions: [
-      { label: 'Batal', variant: 'ghost' },
-      { label: 'Simpan', variant: 'primary', action: (ctx) => { submit(ctx); return false; } }
-    ]
-  });
+// Banyak event pemasangan berdatangan beruntun; cukup muat ulang tabel sekali per detik
+let serversTimer = null;
+function scheduleServers() {
+  clearTimeout(serversTimer);
+  serversTimer = setTimeout(() => loadServers().catch(() => {}), 1000);
 }
 
-// ── Modal Gentelella: konfirmasi hapus ──
-function confirmRemove(s) {
-  showModal({
-    title: 'Hapus server?',
-    size: 'sm',
-    body: el('p', { style: 'font-size:13px;color:var(--text-secondary);line-height:1.6;margin:0' },
-      'Server ', el('strong', { textContent: s.name }), ` (${s.ip}) akan berhenti dipantau Prometheus.`),
-    actions: [
-      { label: 'Batal', variant: 'ghost' },
-      {
-        label: 'Hapus', variant: 'danger',
-        action: async () => {
-          try {
-            await api.removeServer(s.id);
-            showToast(`Server ${s.name} dihapus`, { variant: 'success' });
-            loadServers();
-          } catch (err) {
-            showToast(err.message, { variant: 'error' });
-          }
-        }
-      }
-    ]
-  });
-}
+const openAddServer = () => openAddServerWizard({ onChanged: loadServers });
 
 // ── Menu akun (popover .menu-popover Gentelella) ──
 function confirmLogout() {
@@ -352,6 +286,7 @@ function confirmLogout() {
 }
 const accountMenu = () => [
   { label: 'Tambah server', action: openAddServer },
+  { label: 'Log audit', action: openAuditLog },
   { label: 'Ganti tema', action: () => $('.theme-toggle').click() },
   '-',
   { label: 'Keluar', action: confirmLogout }
@@ -425,5 +360,7 @@ try {
 
 api.stream({
   onSummary: (s) => { renderStats(s); loadServers(); },
-  onAlerts: () => { loadAlerts(); loadServers(); }
+  onAlerts: () => { loadAlerts(); loadServers(); },
+  // Progres pemasangan: segarkan layar progres yang terbuka & tabel server
+  onProvision: (p) => { notifyJobChanged(p.jobId); scheduleServers(); }
 });

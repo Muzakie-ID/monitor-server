@@ -18,6 +18,19 @@ scrape_configs:
       - files: ["/etc/prometheus/targets/nodes.json"]
         refresh_interval: 30s
 
+  # Server yang dipasang otomatis oleh provisioner: node_exporter dengan TLS + basic auth.
+  # Sertifikatnya ditandatangani CA pemantau, kata sandinya dibuat provisioner.
+  - job_name: node_secure
+    scheme: https
+    basic_auth:
+      username: pantau
+      password_file: /pantau-secrets/exporter/password
+    tls_config:
+      ca_file: /pantau-secrets/ca/ca.crt
+    file_sd_configs:
+      - files: ["/etc/prometheus/targets/nodes-secure.json"]
+        refresh_interval: 30s
+
   # Cek apakah server bisa di-ping (status Online/Offline + waktu respons).
   # Memakai daftar target yang sama, tapi port-nya dibuang.
   - job_name: blackbox_icmp
@@ -25,7 +38,7 @@ scrape_configs:
     params:
       module: [icmp]
     file_sd_configs:
-      - files: ["/etc/prometheus/targets/nodes.json"]
+      - files: ["/etc/prometheus/targets/nodes.json", "/etc/prometheus/targets/nodes-secure.json"]
         refresh_interval: 30s
     relabel_configs:
       - source_labels: [__address__]

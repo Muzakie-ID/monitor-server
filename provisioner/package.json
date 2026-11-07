@@ -1,0 +1,15 @@
+{
+  "name": "pantau-server-provisioner",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "pg": "^8.13.0",
+    "ssh2": "^1.16.0"
+  }
+}
